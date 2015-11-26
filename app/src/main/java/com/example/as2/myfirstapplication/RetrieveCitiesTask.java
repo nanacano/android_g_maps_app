@@ -18,7 +18,7 @@ import java.util.ArrayList;
  */
 public class RetrieveCitiesTask extends AsyncTask<String, Void, ArrayList<City>> {
 
-    private static final String TAG = "==+==+==+==";
+    private static final String TAG = "==+==retrieve==+==";
 
     public RetrieveCitiesTask(SendingCitiesListResult response) {
         this.response = response;
@@ -30,54 +30,46 @@ public class RetrieveCitiesTask extends AsyncTask<String, Void, ArrayList<City>>
 
     protected ArrayList<City> doInBackground(String... urls) {
         ArrayList<City> cities = new ArrayList<City>();
-        try {
-            Log.d(TAG, "starting of the");
+        if (urls.length > 0){
+            HttpURLConnection connection = null;
+            InputStream inputStream = null;
+            try {
+                URL url = new URL(urls[0]);
+                connection = (HttpURLConnection) url.openConnection();
+                connection.connect();
+                inputStream = connection.getInputStream();
+                BufferedReader r = new BufferedReader(new InputStreamReader(inputStream));
 
-            String myurl = "http://beta.taxistock.ru/taxik/api/client/query_cities";
+                StringBuilder result = new StringBuilder();
+                String line;
+                while ((line = r.readLine()) != null) {
+                    result.append(line);
+                }
 
-            URL url = new URL(myurl);
-            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+                JSONObject jsonObject = new JSONObject(result.toString());
+                JSONArray array = new JSONArray(jsonObject.getString("cities"));
 
-            Log.d(TAG, "before connect");
-            connection.connect();
-            Log.d(TAG, "after connect");
-            InputStream inputStream = connection.getInputStream();
+                for (int i = 0; i < array.length(); i++) {
+                    JSONObject obj = new JSONObject(array.getString(i));
+                    City city = new City();
+                    city.setTitle(obj.getString("city_name"));
+                    city.setLatitude(Double.parseDouble(obj.getString("city_latitude")));
+                    city.setLongitude(Double.parseDouble(obj.getString("city_longitude")));
+                    Log.d(TAG, "title city=" + city.getTitle());
+                    cities.add(city);
+                }
 
-            BufferedReader r = new BufferedReader(new InputStreamReader(inputStream));
+            } catch (Exception e) {
+                Log.d(TAG, e.toString());
+                Log.d(TAG, e.getCause().toString());
+                Log.d(TAG, e.getMessage());
+                e.printStackTrace();
 
-            String result = ""; //InputStreamOperations.InputStreamToString(inputStream);
-
-//            StringBuilder total = new StringBuilder();
-            String line;
-            while ((line = r.readLine()) != null) {
-                result +=line;
+            }finally {
+                if (connection != null){
+                    connection.disconnect();
+                }
             }
-
-            JSONObject jsonObject = new JSONObject(result);
-            JSONArray array = new JSONArray(jsonObject.getString("cities"));
-
-            for (int i = 0; i < array.length(); i++) {
-                JSONObject obj = new JSONObject(array.getString(i));
-                City city = new City();
-                city.setTitle(obj.getString("city_name"));
-                city.setLatitude(Double.parseDouble(obj.getString("city_latitude")));
-                city.setLongitude(Double.parseDouble(obj.getString("city_longitude")));
-                Log.d(TAG, "title city=" + obj.getString("city_name"));
-                Log.d(TAG, " city_latitude=" + obj.getString("city_latitude"));
-                Log.d(TAG, " city_longitude=" + obj.getString("city_longitude"));
-                cities.add(city);
-//                users.add(user);
-            }
-
-        } catch (Exception e) {
-            Log.d(TAG, e.toString() );
-            Log.d(TAG, e.getCause().toString() );
-            Log.d(TAG, e.getMessage() );
-            Log.d(TAG, "==================" );
-            e.printStackTrace();
-
-        }finally {
-            Log.d(TAG, "one city=" );
         }
         return cities;
     }
@@ -87,7 +79,7 @@ public class RetrieveCitiesTask extends AsyncTask<String, Void, ArrayList<City>>
             Log.d(TAG, "onPostExecute cities=" + list.toString());
             response.sendCitiesList(list);
         }else{
-            response.sendCitiesList("blalba");
+            response.sendCitiesList(new ArrayList<City>());
         }
     }
 
